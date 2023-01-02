@@ -1,0 +1,71 @@
+﻿@page "/Fields"
+@using SnapForm.Client.Services
+@attribute [Authorize(Roles = "Admin")]
+@inject FieldService FieldService
+@inject NavigationManager NavigationManager
+
+<div class="row">
+    <div class="col-6"><h3>Fields</h3></div>
+    <div class="col-6 d-flex flex-row-reverse">
+        <button class="btn btn-primary" style="margin-bottom: 5px;" @onclick="CreateField">Create Field</button>
+    </div>
+</div>
+<table class="table table-striped">
+    <thead class="thead-dark">
+        <tr>
+            <th scope="col">Date Created</th>
+            <th scope="col">Title</th>
+            <th scope="col">Input Type</th>
+            <th scope="col">Is Required</th>
+            <th scope="col">Description</th>
+            <th scope="col"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (FieldService.Fields.Count == 0)
+        {
+            <tr>
+                <td colspan="6">
+                    No Fields to view here,
+                    <NavLink style="margin-left: 0;" href="FieldCreator">Create One Now</NavLink>
+                </td>
+            </tr>
+        }
+
+        @foreach (var field in FieldService.Fields)
+        {
+            <tr>
+                <td>@field.DateCreated</td>
+                <td>@field.Title</td>
+                <td>@field.InputType</td>
+                <td>@field.IsRequired</td>
+                <td>@field.Description</td>
+                <td>
+                    <button type="button" class="btn btn-outline-warning btn-sm" @onclick="@(() => EditField(field.Id))">
+                        <span class="oi oi-pencil" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm">
+                        <span class="oi oi-delete" aria-hidden="true"></span>
+                    </button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await FieldService.GetAll();
+    }
+
+    public void CreateField()
+    {
+        NavigationManager.NavigateTo("/FieldCreator");
+    }
+
+    public void EditField(string id)
+    {
+        NavigationManager.NavigateTo($"/FieldCreator/{id}");
+    }
+}

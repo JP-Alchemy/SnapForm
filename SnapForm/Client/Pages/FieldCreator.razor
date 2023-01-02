@@ -1,0 +1,206 @@
+﻿@page "/FieldCreator"
+@page "/FieldCreator/{Id}"
+@using SnapForm.Client.Services
+@using SnapForm.Shared
+@using System.IO
+@attribute [Authorize(Roles = "Admin")]
+@inject FieldService FieldService
+@inject IToastService ToastService
+@inject NavigationManager NavigationManager
+
+<h3>Field Creator</h3>
+
+<EditForm Model="@_fieldCreation" OnValidSubmit="OnSubmitForm">
+    <DataAnnotationsValidator/>
+
+    <div class="form-group">
+        <label for="title">Title</label>
+        <InputText id="title" @bind-Value="_fieldCreation.Title" class="form-control"/>
+        <ValidationMessage For="@(() => _fieldCreation.Title)"/>
+    </div>
+
+    <div class="form-group">
+        <label for="description">Description</label>
+        <InputTextArea id="description" @bind-Value="_fieldCreation.Description" class="form-control" rows="3"/>
+        <ValidationMessage For="@(() => _fieldCreation.Description)"/>
+    </div>
+
+    <div class="form-group">
+        <label for="inputType">Input Type</label>
+        <InputSelect id="inputType" @bind-Value="_fieldCreation.InputType" class="form-control">
+            @foreach (var v in InputTypes.Types)
+            {
+                <option value="@v">@v</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="@(() => _fieldCreation.InputType)"/>
+    </div>
+
+    <div class="form-group">
+        <label for="isRequired">
+            Is Required?
+            <InputCheckbox id="isRequired" @bind-Value="_fieldCreation.IsRequired" class="form-control"/>
+        </label>
+        <ValidationMessage For="@(() => _fieldCreation.IsRequired)"/>
+    </div>
+
+    <div class="form-group">
+        <label for="Category">Category</label>
+        <InputText id="Category" @bind-Value="_fieldCreation.Category" class="form-control"/>
+        <ValidationMessage For="@(() => _fieldCreation.Category)"/>
+    </div>
+
+    @if (_fieldCreation.InputType == InputTypes.Search)
+    {
+        <div class="form-group">
+            <label for="searchType">Search Type</label>
+            <InputSelect id="searchType" @bind-Value="_fieldCreation.SearchType" class="form-control">
+                @foreach (var v in SearchTypes.Types)
+                {
+                    <option value="@v">@v</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="@(() => _fieldCreation.SelectMultiple)"/>
+        </div>
+    }
+    else if (_fieldCreation.InputType == InputTypes.Date)
+    {
+        <div class="form-group">
+            <label for="useDateRange">
+                Select Date Range?
+                <InputCheckbox id="useDateRange" @bind-Value="_fieldCreation.UseDateRange" class="form-control"/>
+            </label>
+            <ValidationMessage For="@(() => _fieldCreation.SelectMultiple)"/>
+        </div>
+    }
+    else if (_fieldCreation.InputType == InputTypes.@Select)
+    {
+        <h3>Select Options</h3>
+        @if (_fieldCreation.Options != null)
+        {
+            @for (int i = 0; i < _fieldCreation.Options.Count; i++)
+            {
+                int ii = i;
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="@_fieldCreation.Options[ii]" value="@_fieldCreation.Options[ii]"
+                           @onchange="@(e => _fieldCreation.Options[ii] = e.Value.ToString())"/>
+                    <div class="input-group-append">
+                        <button type="button" class="btn btn-outline-danger" @onclick="@(() => RemoveOption(ii))">-</button>
+                    </div>
+                </div>
+            }
+        }
+
+        <div class="input-group mb-3">
+            <InputText id="addOption" @bind-Value="_addOption" class="form-control"/>
+            <div class="input-group-append">
+                <button type="button" class="btn btn-outline-success" @onclick="@AddOption">+</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="selectMultiple">
+                Can Select Multiple?
+                <InputCheckbox id="selectMultiple" @bind-Value="_fieldCreation.SelectMultiple" class="form-control"/>
+            </label>
+            <ValidationMessage For="@(() => _fieldCreation.SelectMultiple)"/>
+        </div>
+    }
+
+    @if (_fieldCreation.InputType == InputTypes.@Select || _fieldCreation.InputType == InputTypes.Drawing)
+    {
+        <div class="form-group">
+            <label for="useDiagram">
+                Use A Diagram?
+                <InputCheckbox id="useDiagram" @bind-Value="_fieldCreation.UseDiagram" class="form-control"/>
+            </label>
+            <ValidationMessage For="@(() => _fieldCreation.UseDiagram)"/>
+        </div>
+
+        @if (_fieldCreation.UseDiagram)
+        {
+            <div class="form-group">
+                <label for="diagramImage">
+                    <InputFile id="diagramImage" OnChange="HandleSelection"/>
+                </label>
+                @if (_fieldCreation.DiagramImage != null)
+                {
+                    <img src="@_fieldCreation.DiagramImage" style="max-width: 650px; max-height: 650px;"/>
+                }
+            </div>
+        }
+    }
+
+    <button type="submit" class="btn btn-primary">Save Field</button>
+</EditForm>
+
+@code {
+    private SnapFormField _fieldCreation = new SnapFormField();
+    private string _addOption = "";
+
+    [Parameter]
+    public string Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(Id))
+        {
+            var fieldRes = await FieldService.Get(Id);
+            if (fieldRes.Success)
+            {
+                _fieldCreation = fieldRes.Data;
+            }
+        }
+    }
+
+    private void RemoveOption(int i)
+    {
+        _fieldCreation.Options.RemoveAt(i);
+    }
+
+    private void AddOption()
+    {
+        if (!string.IsNullOrEmpty(Id))
+        {
+            _fieldCreation.Options ??= new List<string>();
+            _fieldCreation.Options.Add(_addOption);
+            _addOption = "";
+        }
+        else
+        {
+            ToastService.ShowError("Can not add empty option");
+        }
+    }
+
+    private async Task OnSubmitForm()
+    {
+        var res = await FieldService.Save(_fieldCreation);
+
+        if (res.Success)
+        {
+            ToastService.ShowSuccess(res.Message);
+            NavigationManager.NavigateTo("/fields");
+        }
+        else
+        {
+            ToastService.ShowError(res.Message);
+        }
+    }
+
+    async Task HandleSelection(InputFileChangeEventArgs files)
+    {
+        IBrowserFile file = files.GetMultipleFiles(1).FirstOrDefault();
+        if (file != null)
+        {
+            var ext = Path.GetExtension(file.Name).ToLower();
+            if (ext == ".jpg" || ext == ".png" || ext == ".jpeg")
+            {
+                var ms = new MemoryStream();
+                await file.OpenReadStream(file.Size).CopyToAsync(ms);
+                string imageBase64Data = Convert.ToBase64String(ms.ToArray());
+                _fieldCreation.DiagramImage = $"data:image/png;base64," + imageBase64Data;
+            }
+        }
+    }
+
+}

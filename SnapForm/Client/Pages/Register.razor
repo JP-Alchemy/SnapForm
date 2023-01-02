@@ -1,0 +1,81 @@
+﻿@page "/register"
+@using SnapForm.Shared
+@using SnapForm.Client.Services
+@inject NavigationManager NavigationManager
+@inject IAuthService AuthService
+@inject IToastService ToastService
+
+<h3>Register</h3>
+
+<EditForm Model="@_user" OnValidSubmit="OnSubmitForm">
+    <DataAnnotationsValidator />
+
+    <div class="form-group">
+        <label for="email">Email</label>
+        <InputText id="email" @bind-Value="_user.Email" class="form-control" />
+        <ValidationMessage For="@(() => _user.Email)" />
+    </div>
+
+    <div class="form-group">
+        <label for="firstName">First Name</label>
+        <InputText id="firstName" @bind-Value="_user.FirstName" class="form-control" />
+        <ValidationMessage For="@(() => _user.FirstName)" />
+    </div>
+
+    <div class="form-group">
+        <label for="lastName">Last Name</label>
+        <InputText id="lastName" @bind-Value="_user.LastName" class="form-control" />
+        <ValidationMessage For="@(() => _user.LastName)" />
+    </div>
+
+    <div class="form-group">
+        <label for="company">Company Name</label>
+        <InputText id="company" @bind-Value="_user.EnterpriseName" class="form-control" />
+        <ValidationMessage For="@(() => _user.EnterpriseName)" />
+    </div>
+
+    <div class="form-group">
+        <label for="industry">Industry</label>
+        <InputText id="industry" @bind-Value="_user.EnterpriseIndustry" class="form-control" />
+        <ValidationMessage For="@(() => _user.EnterpriseIndustry)" />
+    </div>
+
+    <div class="form-group">
+        <label for="password">Password</label>
+        <InputText id="password" @bind-Value="_user.Password" type="password" class="form-control" />
+        <ValidationMessage For="@(() => _user.Password)" />
+    </div>
+
+    <div class="form-group">
+        <label for="confPassword">Confirm Password</label>
+        <InputText id="confPassword" @bind-Value="_user.ConfirmPassword" type="password" class="form-control" />
+        <ValidationMessage For="@(() => _user.ConfirmPassword)" />
+    </div>
+
+    <div class="form-check">
+        <InputCheckbox id="isConfirmed" @bind-Value="_user.IsConfirmed" class="form-check-input" />
+        <label for="isConfirmed">Confirm</label>
+        <ValidationMessage For="@(() => _user.IsConfirmed)" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Register</button>
+</EditForm>
+
+@code {
+    private EnterpriseRegister _user = new EnterpriseRegister();
+
+    private async void OnSubmitForm()
+    {
+        var res = await AuthService.Register(_user);
+
+        if (res.Success)
+        {
+            ToastService.ShowSuccess(res.Message);
+            NavigationManager.NavigateTo("");
+        }
+        else
+        {
+            ToastService.ShowError(res.Message);
+        }
+    }
+}

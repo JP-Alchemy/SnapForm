@@ -1,0 +1,39 @@
+﻿@using System.IO
+@using System.Drawing
+@using System.Drawing.Imaging
+@using SnapForm.Client.Services
+@inject HttpClient Http
+@inject IFormService FormService
+@inject IToastService ToastService
+
+@if (QrCodeStr != null)
+{
+    <img src="@QrCodeStr"/>
+}
+else
+{
+    <p>Loading...</p>
+}
+
+@code {
+    [CascadingParameter] public IModalService Modal { get; set; }
+    [Parameter] public string Id { get; set; }
+
+    private string QrCodeStr { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GenerateQrCode();
+    }
+
+    public async Task GenerateQrCode()
+    {
+        if (string.IsNullOrEmpty(Id)) return;
+        var res = await FormService.GetQR(Id);
+        if (res.Success)
+        {
+            QrCodeStr = res.Data;
+            ToastService.ShowSuccess(res.Message);
+        }
+    }
+}

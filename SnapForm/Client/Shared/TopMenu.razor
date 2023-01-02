@@ -1,0 +1,39 @@
+﻿@using Blazored.LocalStorage
+@inject ILocalStorageService LocalStorage
+@inject AuthenticationStateProvider AuthStatProvider
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
+
+<AuthorizeView>
+    <Authorized>
+        <div>
+            <NavLink href="" style="cursor: pointer" @onclick="Logout">
+                <span class="oi oi-account-logout" aria-hidden="true"></span> Logout
+            </NavLink>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div>
+            <NavLink href=""><span class="oi oi-account-login" aria-hidden="true"></span>Login</NavLink> | 
+            <NavLink style="margin-left: 0;" href="register">
+                 <span class="oi oi-pencil" aria-hidden="true"></span> Register
+            </NavLink>
+        </div>
+    </NotAuthorized>
+
+</AuthorizeView>
+
+@code {
+
+    private async void Logout()
+    {
+        await LocalStorage.RemoveItemAsync("authToken");
+        await AuthStatProvider.GetAuthenticationStateAsync();
+        NavigationManager.NavigateTo("/");
+    }
+
+    private void TestToast()
+    {
+        ToastService.ShowSuccess("Working");
+    }
+}

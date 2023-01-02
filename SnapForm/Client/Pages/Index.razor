@@ -1,0 +1,12 @@
+﻿@page "/"
+
+<AuthorizeView>
+    <Authorized>
+        <h1>Hi, @context.User.Identity.Name, Welcome Back!</h1>
+        <p>Let's Create <NavLink href="FormCreator">your Form.</NavLink></p>
+    </Authorized>
+    <NotAuthorized>
+        <h1>Welcome to Snap Form!</h1>
+        <Login />
+    </NotAuthorized>
+</AuthorizeView>

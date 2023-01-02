@@ -1,0 +1,78 @@
+﻿@page "/Submissions/{Id}"
+@using SnapForm.Client.Services
+@using SnapForm.Shared
+@inject IFormService FormService
+@attribute [Authorize]
+
+<div class="row">
+    <div class="col-3">
+        <h3>Form Submissions</h3>
+    </div>
+    <div class="col-9">
+        <h3>Selected Info</h3>
+    </div>
+</div>
+<div class="row">
+    <div class="col-3">
+        <div class="list-group">
+            @foreach (var submission in FormSubmissions)
+            {
+                <button type="button" class="list-group-item list-group-item-action @isActive(submission)" aria-current="true" @onclick="@(() => SelectSubmission(submission))">
+                    @submission.DateCreated <br /> @submission.User.Email
+                </button>
+            }
+        </div>
+    </div>
+    <div class="col-9">
+        @if (Selected != null)
+        {
+            <div class="row">
+                <div class="col">
+                    <p><b>Created On:</b> @Selected.DateCreated</p>
+                </div>
+                <div class="col">
+                    <p><b>Submitted By:</b> @Selected.User.Email</p>
+                </div>
+            </div>
+
+            <form>
+                @for (var i = 0; i < Selected.Fields.Count; i++)
+                {
+                    <div class="form-group">
+                        <label>@Selected.Fields[@i].Title</label>
+                        <input type="@Selected.Fields[@i].InputType" value="@Selected.Entries[@i].Input" class="form-control" readonly>
+                    </div>
+                }
+            </form>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Id { get; set; }
+    public List<FormSubmission> FormSubmissions = new List<FormSubmission>();
+    public FormSubmission Selected;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(Id))
+        {
+            var res = await FormService.GetSubmissionsTask(Id);
+            if (res.Success)
+            {
+                FormSubmissions = res.Data;
+            }
+        }
+    }
+
+    public string isActive(FormSubmission submission)
+    {
+        return submission == Selected ? "active" : "";
+    }
+
+    public void SelectSubmission(FormSubmission submission)
+    {
+        Selected = submission;
+    }
+}

@@ -1,0 +1,210 @@
+﻿@page "/FormCreator"
+@page "/FormCreator/{Id}"
+@using SnapForm.Client.Services
+@using SnapForm.Shared
+@attribute [Authorize]
+@inject FieldService FieldService
+@inject IFormService FormService
+@inject IToastService ToastService
+@inject NavigationManager NavigationManager
+
+<h3>Form Creator</h3>
+
+<EditForm Model="@_formCreation" OnValidSubmit="OnSubmitForm">
+    <DataAnnotationsValidator/>
+
+    <div class="form-group">
+        <label for="name">Name</label>
+        <InputText id="name" @bind-Value="_formCreation.Name" class="form-control"/>
+        <ValidationMessage For="@(() => _formCreation.Name)"/>
+    </div>
+
+    <div class="form-group">
+        <label for="description">Description</label>
+        <InputTextArea id="description" @bind-Value="_formCreation.Description" class="form-control" rows="3"/>
+        <ValidationMessage For="@(() => _formCreation.Description)"/>
+    </div>
+
+    <div class="row">
+        <div class="col-2">
+            <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                    <span class="input-group-text" id="search1">Search</span>
+                </div>
+                <input id="search" class="form-control" @bind-Value="_searchText" @bind-Value:event="oninput"/>
+            </div>
+        </div>
+        <div class="col-2">
+            <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                    <span class="input-group-text" id="inputType1">Type</span>
+                </div>
+                <InputSelect id="inputType" @bind-Value="searchType" class="form-control">
+                    <option value="">ANY</option>
+                    @foreach (var v in InputTypes.Types)
+                    {
+                        <option value="@v">@v</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+        <div class="col-8">
+
+        </div>
+    </div>
+    <div class="row jobs-container">
+        <div class="col-4 job-status">
+            <p>Drag From Here</p>
+            <ul class="dropzone @dropClass"
+                ondragover="event.preventDefault();"
+                ondragstart="event.dataTransfer.setData('', event.target.id);"
+                @ondrop="HandleDropInitial"
+                @ondragenter="HandleDragEnter"
+                @ondragleave="HandleDragLeave">
+
+                @foreach (var item in GetFilteredFields())
+                {
+                    <li class="draggable" draggable="true" title="@item.Description" @ondragstart="@(() => HandleDragStart(item))">
+                        <p class="description">
+                            @item.Title <small style="font-size: 70%">@item.InputType</small>
+                        </p>
+                        <p class="last-updated">
+                            <small>Description</small> @item.Description
+                        </p>
+                    </li>
+                }
+            </ul>
+        </div>
+        <div class="col-8 job-status">
+            <p>Drop Into Here</p>
+            <ul class="dropzone @dropClass"
+                ondragover="event.preventDefault();"
+                ondragstart="event.dataTransfer.setData('', event.target.id);"
+                @ondrop="HandleDropStored"
+                @ondragenter="HandleDragEnter"
+                @ondragleave="HandleDragLeave">
+
+                @foreach (var item in StoredFields)
+                {
+                    <li class="draggable" draggable="true" title="@item.Description" @ondragstart="@(() => HandleDragStart(item))">
+                        <p class="description">@item.Title</p>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="width: 100%">Save Form</button>
+</EditForm>
+
+@code {
+    private readonly EnterpriseFormCreation _formCreation = new();
+    public List<SnapFormField> InitialFields = new();
+    public readonly List<SnapFormField> StoredFields = new();
+    private SnapFormField _selectedFieldPayload;
+    private string searchType = "";
+    private string _searchText = "";
+
+    [Parameter]
+    public string Id { get; set; }
+
+    string dropClass = "";
+
+    List<SnapFormField> GetFilteredFields()
+    {
+        if (InitialFields == null) return new List<SnapFormField>();
+        return InitialFields.Where(i => i.InputType.ToLower().Contains(searchType.ToLower()) &&
+                                        (i.Title.ToLower().Contains(_searchText.ToLower()) ||
+                                         i.Description.ToLower().Contains(_searchText.ToLower()))).ToList();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var res = await FieldService.GetAll();
+        if (res.Success)
+        {
+            InitialFields = res.Data;
+
+            if (!string.IsNullOrEmpty(Id))
+            {
+                var formRes = await FormService.Get(Id);
+                if (formRes.Success)
+                {
+                    _formCreation.ID = formRes.Data.ID;
+                    _formCreation.Name = formRes.Data.Name;
+                    _formCreation.Description = formRes.Data.Description;
+
+                    RealignInitialToStoredFields(formRes.Data.FormInputIds);
+                }
+            }
+        }
+    }
+
+    private void RealignInitialToStoredFields(List<string> formInputs)
+    {
+        foreach (var id in formInputs)
+        {
+            var found = InitialFields.Find(x => x.Id == id);
+            if (found == null) continue;
+            if (InitialFields.Remove(found))
+            {
+                StoredFields.Add(found);
+            }
+        }
+    }
+
+    private async Task OnSubmitForm()
+    {
+        _formCreation.FormInputIds = StoredFields.Select(store => store.Id).ToList();
+
+        var res = await FormService.Save(_formCreation);
+
+        if (res.Success)
+        {
+            ToastService.ShowSuccess(res.Message);
+            NavigationManager.NavigateTo("/forms");
+        }
+        else
+        {
+            ToastService.ShowError(res.Message);
+        }
+    }
+
+    private void HandleDragStart(SnapFormField selectedField)
+    {
+        _selectedFieldPayload = selectedField;
+    }
+
+    private void HandleDragEnter()
+    {
+    // https://github.com/chrissainty/SimpleDragAndDropWithBlazor/blob/master/SimpleDragAndDropWithBlazor/SimpleDragAndDropWithBlazor/wwwroot/css/site.css
+        dropClass = "can-drop";
+    }
+
+    private void HandleDragLeave()
+    {
+        dropClass = "";
+    }
+
+    private void HandleDropInitial()
+    {
+        dropClass = "";
+        if (InitialFields.Contains(_selectedFieldPayload)) return;
+        InitialFields.Add(_selectedFieldPayload);
+        StoredFields.Remove(_selectedFieldPayload);
+    }
+
+    private void HandleDropStored()
+    {
+        dropClass = "";
+        if (StoredFields.Contains(_selectedFieldPayload)) return;
+        StoredFields.Add(_selectedFieldPayload);
+        InitialFields.Remove(_selectedFieldPayload);
+    }
+
+    private void KeyboardEventHandler(KeyboardEventArgs args)
+    {
+        Console.WriteLine("Seached: " + _searchText);
+    }
+
+}

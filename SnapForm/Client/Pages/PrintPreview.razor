@@ -1,0 +1,108 @@
+﻿@page "/PrintPreview/{Id}"
+@using SnapForm.Client.Services
+@using SnapForm.Shared
+@attribute [Authorize]
+@inject IFormService FormService
+@inject IJSRuntime JS;
+
+<style>
+    .no-print {
+        display: none !important;
+    }
+</style>
+@if (Form != null)
+{
+    <div style="position: absolute; left: 50%; top: 0;" class="no-print-preview">
+        <div class="popover" role="tooltip" style="position: relative; left: -50%; border-radius: 0;">
+            <h3 class="popover-header text-center bg-warning">In Print Preview Mode</h3>
+            <div class="popover-body text-center">
+                You are viewing this file in preview,
+                <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(PrintForm)">Print/Save Here</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col">
+            <h3>Form: @Form.Name</h3>
+        </div>
+        <div class="col" style="text-align: right;">
+            @if (QrCodeStr != null)
+            {
+                <img style="width: 30%;" src="@QrCodeStr"/>
+            }
+        </div>
+    </div>
+
+    <table class="table">
+        <tbody>
+        @foreach (var field in Form.Fields)
+        {
+            <tr>
+                <td class="InputData">
+                    <h5 style="margin-bottom: 0;">@field.Title: <small style="color: #8080805e;">@field.Description</small></h5>
+
+                    @if (field.UseDiagram)
+                    {
+                        <div class="row justify-content-center">
+                            <img src="@field.DiagramImage" alt="">
+                        </div>
+                    }
+                    @if (field.InputType == InputTypes.Select)
+                    {
+                        <div class="row">
+                            @foreach (var opt in field.Options)
+                            {
+                                <div class="col">
+                                    <input type="checkbox"><label>@opt</label>
+                                </div>
+                            }
+                        </div>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>... LOADING ...</p>
+}
+
+@code {
+
+    [Parameter]
+    public string Id { get; set; }
+
+    public EnterpriseForm Form = null;
+    private string QrCodeStr { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(Id))
+        {
+            var formRes = await FormService.GetFormWithFields(Id);
+            if (formRes.Success)
+            {
+                Form = formRes.Data;
+            }
+            await GenerateQrCode();
+        }
+    }
+
+    public async Task PrintForm()
+    {
+        await JS.InvokeVoidAsync("print");
+    }
+
+    public async Task GenerateQrCode()
+    {
+        var res = await FormService.GetQR(Id);
+        if (res.Success)
+        {
+            QrCodeStr = res.Data;
+        }
+    }
+
+}

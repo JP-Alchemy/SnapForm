@@ -1,0 +1,43 @@
+﻿@using Blazored.LocalStorage
+@using SnapForm.Client.Services
+@using SnapForm.Shared
+@inject ILocalStorageService LocalStorage
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IAuthService AuthService
+@inject IToastService ToastService
+Please Login bellow or <NavLink href="register">register</NavLink> here.
+
+<EditForm Model="@_user" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+    <div class="form-group">
+        <label for="email">Username</label>
+        <InputText id="email" @bind-Value="_user.Email" type="email" class="form-control" />
+        <ValidationMessage For="@(() => _user.Email)" />
+    </div>
+
+    <div class="form-group">
+        <label for="password">Password</label>
+        <InputText id="password" @bind-Value="_user.Password" type="password" class="form-control" />
+        <ValidationMessage For="@(() => _user.Password)" />
+    </div>
+    <button class="btn btn-primary" type="submit">Login</button>
+</EditForm>
+
+@code {
+    private readonly UserLogin _user = new UserLogin();
+
+    private async void HandleSubmit()
+    {
+        var res = await AuthService.Login(_user);
+
+        if (res.Success)
+        {
+            await LocalStorage.SetItemAsync("authToken", res.Data);
+            await AuthStateProvider.GetAuthenticationStateAsync();
+        }
+        else
+        {
+            ToastService.ShowError(res.Message);
+        }
+    }
+}

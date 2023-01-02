@@ -1,0 +1,101 @@
+﻿@page "/forms"
+@using SnapForm.Client.Services
+@using SnapForm.Client.Modals
+@using SnapForm.Shared
+@using System.Diagnostics
+@inject IFormService FormService
+@attribute [Authorize]
+@inject NavigationManager NavigationManager
+@inject IModalService Modal
+@inject IJSRuntime JS;
+
+<div class="row">
+    <div class="col-6"><h3>Forms</h3></div>
+    <div class="col-6 d-flex flex-row-reverse">
+        <button class="btn btn-primary" style="margin-bottom: 5px;" @onclick="CreateFormClicked">Create Form</button>
+    </div>
+</div>
+<table class="table table-striped">
+    <thead class="thead-dark">
+        <tr>
+            <th scope="col">Date Created</th>
+            <th scope="col">Name</th>
+            <th scope="col">Description</th>
+            <th scope="col">Submissions</th>
+            <th scope="col">Fields Count</th>
+            <th scope="col"></th>
+        </tr>
+    </thead>
+    <tbody class="PrintPDF">
+        @if (FormService.Forms.Count == 0)
+        {
+            <tr>
+                <td colspan="6">
+                    No Forms to view here,
+                    <NavLink style="margin-left: 0;" href="FormCreator">Create One Now</NavLink>
+                </td>
+            </tr>
+        }
+
+        @foreach (var form in FormService.Forms)
+        {
+            <tr>
+                <td>@form.DateCreated</td>
+                <td>@form.Name</td>
+                <td>@form.Description</td>
+                <td>
+                    <button type="button" class="btn btn-outline-info btn-sm" @onclick="@(() => ViewSubmissions(form.ID))">
+                        @form.SubmissionCount
+                    </button>
+                </td>
+                <td>@form.FormInputIds.Count</td>
+                <td>
+                    <button type="button" class="btn btn-outline-warning btn-sm" @onclick="@(() => EditForm(form.ID))">
+                        <span class="oi oi-pencil" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="btn btn-outline-success btn-sm" @onclick="@(() => ShowQr(form))">
+                        <span class="oi oi-grid-two-up" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="btn btn-outline-success btn-sm" @onclick="@(() => PrintForm(form.ID))">
+                        <span class="oi oi-print" aria-hidden="true"></span>
+                    </button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await FormService.GetAll();
+    }
+
+    public void CreateFormClicked()
+    {
+        NavigationManager.NavigateTo("/FormCreator");
+    }
+
+    public void ViewSubmissions(string id)
+    {
+        NavigationManager.NavigateTo($"/Submissions/{id}");
+    }
+
+    public void EditForm(string id)
+    {
+        NavigationManager.NavigateTo($"/FormCreator/{id}");
+    }
+
+    public void ShowQr(EnterpriseForm form)
+    {
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(QRGenerator.Id), form.ID);
+
+        Modal.Show<QRGenerator>($"QR Code for: {form.Name}", parameters);
+    }
+
+    public async Task PrintForm(string id)
+    {
+        await JS.InvokeAsync<object>("open", $"/PrintPreview/{id}", "_blank");
+    }
+}

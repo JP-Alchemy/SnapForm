@@ -1,0 +1,20 @@
+﻿@inherits LayoutComponentBase
+@using Blazored.Toast.Configuration
+
+<BlazoredToasts />
+
+<div class="page">
+    <div class="sidebar no-print">
+        <NavMenu />
+    </div>
+
+    <div class="main">
+        <div class="top-row px-4 no-print" style="z-index: 0;">
+            <TopMenu />
+        </div>
+
+        <div class="content px-4">
+            @Body
+        </div>
+    </div>
+</div>
